@@ -18,6 +18,7 @@ package com.example.android.soonami;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -45,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** URL to query the USGS dataset for earthquake information */
     private static final String USGS_REQUEST_URL =
-            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2012-01-01&endtime=2012-12-01&minmagnitude=6";
+            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-12-01&minmagnitude=7";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,11 +105,11 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected Event doInBackground(URL... urls) {
-            // Create URL object
+            // Create URL object. 把USGS_REQUEST_URL的網址轉成URL物件
             URL url = createUrl(USGS_REQUEST_URL);
 
             // Perform HTTP request to the URL and receive a JSON response back
-            String jsonResponse = "";
+            String jsonResponse = "";     //Initialize jsonResponse to an empty String.
             try {
                 jsonResponse = makeHttpRequest(url);
             } catch (IOException e) {
@@ -129,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Event earthquake) {
             if (earthquake == null) {
-                return;
+                return;             //If there is a null earthquake, then we won't update the UI.
             }
 
             updateUi(earthquake);
@@ -154,18 +155,33 @@ public class MainActivity extends AppCompatActivity {
          */
         private String makeHttpRequest(URL url) throws IOException {
             String jsonResponse = "";
-            HttpURLConnection urlConnection = null;
+            // 確保不會在網址失效的狀態下還送出HTTP數據要求
+            // If the URL is null (invalid), then return early. If the url is null, we shouldn’t try to make the HTTP request.
+            // Or if the JSON response is null or empty string, we shouldn’t try to continue with parsing it.
+            if (url==null) {
+                return jsonResponse;        //If the url is null, then simply return jsonResponse that contains an empty String.
+            }
+
+            HttpURLConnection urlConnection = null;   //HttpURLConnection這個屬性是網路數據的傳送接收器
             InputStream inputStream = null;
+
             try {
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
+                urlConnection = (HttpURLConnection) url.openConnection();   //透過url.openConnection()打開網路連接
+                urlConnection.setRequestMethod("GET");                      //指定要求數據的方式為GET
                 urlConnection.setReadTimeout(10000 /* milliseconds */);
                 urlConnection.setConnectTimeout(15000 /* milliseconds */);
-                urlConnection.connect();
-                inputStream = urlConnection.getInputStream();
-                jsonResponse = readFromStream(inputStream);
+                urlConnection.connect();                                    //執行連接。與伺服器建立連接。
+                //確保收到數據要求成功的200狀態碼時要讀取和解析收到的數據。
+                //After the connection is established, check the connection code (status) by calling getResponseCode().
+                //If the ResponseCode is 200, we proceed to read from the inputStream and extract the jasonResponse.
+                if (urlConnection.getResponseCode() == 200) {
+                    inputStream = urlConnection.getInputStream();               //Get the inputStream which contains the results. Receiving the response from the server.
+                    jsonResponse = readFromStream(inputStream);                 //Making sense of the response from the server.
+                }
+
             } catch (IOException e) {
                 // TODO: Handle the exception
+
             } finally {
                 if (urlConnection != null) {
                     urlConnection.disconnect();
@@ -197,10 +213,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /**
-         * Return an {@link Event} object by parsing out information
-         * about the first earthquake from the input earthquakeJSON string.
+         * Return an {@link Event} object by parsing out information about the first earthquake from the input earthquakeJSON string.
+         * It the return value of the makeHttpRequest method can bean empty String,
+         * then make sure the method (extractFeatureFromJson) that takes the jasonResponse as input is handling that empty String
          */
         private Event extractFeatureFromJson(String earthquakeJSON) {
+            // Check if the jsonResponse String (input parameter) is empty (null). If so, then return early.
+            if (TextUtils.isEmpty(earthquakeJSON)){
+                return null;            //We return null because there is no valid event object from the jsonResponse.
+            }
             try {
                 JSONObject baseJsonResponse = new JSONObject(earthquakeJSON);
                 JSONArray featureArray = baseJsonResponse.getJSONArray("features");
