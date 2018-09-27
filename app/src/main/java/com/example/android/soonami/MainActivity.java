@@ -154,17 +154,23 @@ public class MainActivity extends AppCompatActivity {
          * Make an HTTP request to the given URL and return a String as the response.
          */
         private String makeHttpRequest(URL url) throws IOException {
-            String jsonResponse = "";
-            // 確保不會在網址失效的狀態下還送出HTTP數據要求
+            String jsonResponse = "";  //創建一個空白文字的String並命名為jsonResponse
+
+            /**
+             * 確保不會在網址失效的狀態下還送出HTTP數據要求。若網址失效，就會回傳空白文字。
+             */
             // If the URL is null (invalid), then return early. If the url is null, we shouldn’t try to make the HTTP request.
             // Or if the JSON response is null or empty string, we shouldn’t try to continue with parsing it.
             if (url==null) {
-                return jsonResponse;        //If the url is null, then simply return jsonResponse that contains an empty String.
+                return jsonResponse;        //若網址失效，就會回傳空白文字。If the url is null, then simply return jsonResponse that contains an empty String.
             }
 
-            HttpURLConnection urlConnection = null;   //HttpURLConnection這個屬性是網路數據的傳送接收器
-            InputStream inputStream = null;
+            HttpURLConnection urlConnection = null;   //將urlConnection初始化為null。HttpURLConnection這個類別是網路數據的傳送接收器，it is used to get our Jason data return the server's response via inputStream.
+            InputStream inputStream = null;           //將inputStream初始化為null。 An inputStream allows you to retrieve information one chunk of data at a time.
 
+            /**
+             * 建立連線並在確定收到數據要求成功的200狀態碼時要讀取和解析收到的數據。
+             */
             try {
                 urlConnection = (HttpURLConnection) url.openConnection();   //透過url.openConnection()打開網路連接
                 urlConnection.setRequestMethod("GET");                      //指定要求數據的方式為GET
@@ -176,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
                 //If the ResponseCode is 200, we proceed to read from the inputStream and extract the jasonResponse.
                 if (urlConnection.getResponseCode() == 200) {
                     inputStream = urlConnection.getInputStream();               //Get the inputStream which contains the results. Receiving the response from the server.
-                    jsonResponse = readFromStream(inputStream);                 //Making sense of the response from the server.
+                    jsonResponse = readFromStream(inputStream);                 //Making sense of the response from the server. The readFromStream helper method reads the data that comes from the inputStream.
                 }
 
             } catch (IOException e) {
@@ -191,35 +197,52 @@ public class MainActivity extends AppCompatActivity {
                     inputStream.close();
                 }
             }
-            return jsonResponse;
+            return jsonResponse;   //If the ResponseCode is not 200 (meaning if there is an error code), we do nothing and return the empty String (called jsonResponse).
+                                   //這代表makeHttpRequest方法可能會回傳空白文字(jsonResponse)，那就要確保使用到jsonResponse的extractFeatureFromJson方法會去處理空白文字。
         }
 
         /**
          * Convert the {@link InputStream} into a String which contains the
          * whole JSON response from the server.
+         *
+         * InputStream就像傳輸線裡被傳輸的原始數據；BufferedReader就像翻譯機一樣將原始數據轉譯成人類可解讀的字符。
+         * 雖然inputStreamReader和BufferedReader都是翻譯機，但inputStreamReader像撥接速度一次只轉譯一個字，BufferedReader像光纖速度一次轉譯一批的字，
+         * 所以還須將inputStreamReader封裝到BufferedReader裡面做快速轉譯
          */
         private String readFromStream(InputStream inputStream) throws IOException {
             StringBuilder output = new StringBuilder();
             if (inputStream != null) {
+
+                // Use inputStreamReader to handle translation process from raw data to human readable characters.
+                // InputStream is passed in as a parameter to inputStreamReader via the constructor to begin reading data from the InputStream.
+                // We also pass in the character set (Charset). Charset specifies how to translate the inputStream's raw data into readable characters one byte at a time,
+                // and it knows how to decode each byte into a specific human readable character.
+                // UTF-8 is the Unicode character encoding used for almost any texts found on the web.
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
+
+                // The inputStreamReader can only read a single character at a time which consumes tremendous time. Tis can be avoided by wrapping inputStreamReader in the bufferedReader (named "reader").
+                // The BufferedReader can accept a request for a character, and will read and save a larger chunk of data around it,
+                // so it can read ahead of time instead of having to go back to the inputStreamReader.
+
                 BufferedReader reader = new BufferedReader(inputStreamReader);
-                String line = reader.readLine();
+                String line = reader.readLine();  // Tell the reader (BufferedReader) to start reading lines.
                 while (line != null) {
                     output.append(line);
                     line = reader.readLine();
                 }
             }
-            return output.toString();
+            return output.toString();  // Convert the result of BufferedReader into a String and then parse the Jason.
         }
 
         /**
          * Return an {@link Event} object by parsing out information about the first earthquake from the input earthquakeJSON string.
-         * It the return value of the makeHttpRequest method can bean empty String,
+         * It the return value of the makeHttpRequest method can be an empty String,
          * then make sure the method (extractFeatureFromJson) that takes the jasonResponse as input is handling that empty String
          */
         private Event extractFeatureFromJson(String earthquakeJSON) {
+            // Before proceeding from extracting information from the jsonResponse, we should check if the input parameter is either the empty String or null by calling TextUtils.isEmpty and passing in the String.
             // Check if the jsonResponse String (input parameter) is empty (null). If so, then return early.
-            if (TextUtils.isEmpty(earthquakeJSON)){
+            if (TextUtils.isEmpty(earthquakeJSON)){    // If this String is empty, then this expression will be true and we will return early from the method.
                 return null;            //We return null because there is no valid event object from the jsonResponse.
             }
             try {
