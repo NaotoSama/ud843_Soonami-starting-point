@@ -202,36 +202,37 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /**
-         * Convert the {@link InputStream} into a String which contains the
-         * whole JSON response from the server.
+         * Convert the {@link InputStream} into a String which contains the whole JSON response from the server.
          *
          * InputStream就像傳輸線裡被傳輸的原始數據；BufferedReader就像翻譯機一樣將原始數據轉譯成人類可解讀的字符。
          * 雖然inputStreamReader和BufferedReader都是翻譯機，但inputStreamReader像撥接速度一次只轉譯一個字，BufferedReader像光纖速度一次轉譯一批的字，
          * 所以還須將inputStreamReader封裝到BufferedReader裡面做快速轉譯
          */
-        private String readFromStream(InputStream inputStream) throws IOException {
-            StringBuilder output = new StringBuilder();
-            if (inputStream != null) {
+        private String readFromStream(InputStream inputStream) throws IOException {   //In this method we have an inputStream and we want to return a string containing the contents of that stream.
+            StringBuilder output = new StringBuilder();  // Create a new Stringbuilder named "output" and start appending to it all the lines of text available in the BufferedReader.
+            if (inputStream != null) {    //If the inputStream is not null (meaning if the inputStream contains anything), then do the following steps:
 
-                // Use inputStreamReader to handle translation process from raw data to human readable characters.
-                // InputStream is passed in as a parameter to inputStreamReader via the constructor to begin reading data from the InputStream.
+                // Create and use inputStreamReader to handle translation process from raw data to human readable characters.
+                // "inputStream" is passed in as a parameter to the InputStreamReader via the constructor to begin reading data from the InputStream.
                 // We also pass in the character set (Charset). Charset specifies how to translate the inputStream's raw data into readable characters one byte at a time,
                 // and it knows how to decode each byte into a specific human readable character.
                 // UTF-8 is the Unicode character encoding used for almost any texts found on the web.
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
 
-                // The inputStreamReader can only read a single character at a time which consumes tremendous time. Tis can be avoided by wrapping inputStreamReader in the bufferedReader (named "reader").
+                // The inputStreamReader can only read a single character at a time which consumes tremendous time.
+                // This can be avoided by wrapping inputStreamReader in the BufferedReader (named "reader").
                 // The BufferedReader can accept a request for a character, and will read and save a larger chunk of data around it,
                 // so it can read ahead of time instead of having to go back to the inputStreamReader.
-
                 BufferedReader reader = new BufferedReader(inputStreamReader);
-                String line = reader.readLine();  // Tell the reader (BufferedReader) to start reading lines.
-                while (line != null) {
-                    output.append(line);
-                    line = reader.readLine();
+                String line = reader.readLine();  // Tell the BufferedReader (named "reader") to start reading lines. (Ask the BufferedReader for a line of text)
+                while (line != null) {    //While the line isn't null(meaning if the line contains anything),
+                    output.append(line);  //we will append that line to the StringBuilder (named "output"),
+                    line = reader.readLine();  // and then read another line.
                 }
             }
-            return output.toString();  // Convert the result of BufferedReader into a String and then parse the Jason.
+            return output.toString();  // Eventually the BufferedReader will run out of lines and we will use the Convert the toString method
+                                       // to return result (final output) of the BufferedReader into a String and then parse the Jason.
+                                       // 由於StringBuilder (named "output")是屬於可變的(mutable)字符，所以必須透過toString方法轉換成不可變(immutable)的字符，然後提交(return)出來
         }
 
         /**
