@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** URL to query the USGS dataset for earthquake information */
     private static final String USGS_REQUEST_URL =
-            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-12-01&minmagnitude=7";
+            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2018-01-01&endtime=3000-12-01&minmagnitude=7";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
     private class TsunamiAsyncTask extends AsyncTask<URL, Void, Event> {
 
         @Override
-        protected Event doInBackground(URL... urls) {
+        protected Event doInBackground(URL... urls) {   //the "..." syntax is for a variable length list of arguments (urls holds more than one URL). This is typically used to allow users to pass in more than one URL to be fetched in the background.
             // Create URL object. 把USGS_REQUEST_URL的網址轉成URL物件
             URL url = createUrl(USGS_REQUEST_URL);
 
@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 jsonResponse = makeHttpRequest(url);
             } catch (IOException e) {
-                // TODO Handle the IOException
+                Log.e(LOG_TAG, "Problem making the HTTP request.", e);
             }
 
             // Extract relevant fields from the JSON response and create an {@link Event} object
@@ -169,6 +169,7 @@ public class MainActivity extends AppCompatActivity {
             InputStream inputStream = null;           //將inputStream初始化為null。 An inputStream allows you to retrieve information one chunk of data at a time.
 
             /**
+             * 嘗試(try)以下可能會出現exception的動作
              * 建立連線並在確定收到數據要求成功的200狀態碼時要讀取和解析收到的數據。
              */
             try {
@@ -180,24 +181,32 @@ public class MainActivity extends AppCompatActivity {
                 //確保收到數據要求成功的200狀態碼時要讀取和解析收到的數據。
                 //After the connection is established, check the connection code (status) by calling getResponseCode().
                 //If the ResponseCode is 200, we proceed to read from the inputStream and extract the jasonResponse.
-                if (urlConnection.getResponseCode() == 200) {
-                    inputStream = urlConnection.getInputStream();               //Get the inputStream which contains the results. Receiving the response from the server.
+                if (urlConnection.getResponseCode() == 200) {                   //If the ResponseCode is 200,
+                    inputStream = urlConnection.getInputStream();               //get the inputStream which contains the results. Receiving the response from the server.
                     jsonResponse = readFromStream(inputStream);                 //Making sense of the response from the server. The readFromStream helper method reads the data that comes from the inputStream.
+                } else {                                                        //If the ResponseCode isn't 200, log the error response code.
+                    Log.e(LOG_TAG, "Error response code: "+ urlConnection.getResponseCode());
                 }
 
+             /**
+              * 捕捉(catch)以下的exception
+             */
             } catch (IOException e) {
-                // TODO: Handle the exception
+                Log.e(LOG_TAG, "Problem receiving the earthquake Jason results", e);
+                }
 
-            } finally {
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
+             /**
+              * 不論有沒有出現exception都會執行以下動作
+              * 中斷並關閉連線以釋放系資源
+             */
+                if (urlConnection != null) {     //若連線還未中斷
+                    urlConnection.disconnect();  //就中斷連線
                 }
-                if (inputStream != null) {
+                if (inputStream != null) {   //若inputStream還有資料
                     // function must handle java.io.IOException here
-                    inputStream.close();
+                    inputStream.close();     //就關閉inputStream
                 }
-            }
-            return jsonResponse;   //If the ResponseCode is not 200 (meaning if there is an error code), we do nothing and return the empty String (called jsonResponse).
+            return jsonResponse;   //If the response ode is not 200 (meaning if there is an error code), we do nothing and return the empty String (called jsonResponse).
                                    //這代表makeHttpRequest方法可能會回傳空白文字(jsonResponse)，那就要確保使用到jsonResponse的extractFeatureFromJson方法會去處理空白文字。
         }
 
@@ -271,3 +280,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
+
+/**
+ * Exceptions are basically errors, but they're also captured or wrapped in actual instances of the exception class,
+ * which holds information about what went wrong and what was happening in the system at the time.
+ * you could create a new exception class for your own purposes. For example, we can create an InvalidEarthquakeException and define it as we normally would.
+ * Create a custom class and then have that custom class just extend from the base Exception class. From there, we can customize the Exception to hold very specify information about an invalid earthquake scenario.
+ * So as a developer you can write a method that declares that it will throw an exception. Meaning that the code inside that method either one, generates and exception to indicate a unique condition,
+ * or two, and more commonly, calls a method that throws an exception. Meaning that the Android runtime tried to execute some code, but ran into a problem and therefore gave notice of the problem by throwing the exception.
+ * If an exception is thrown, it also means that the code following the line that caused the exception won't get executed. So how do you do this in Java code?
+ * Number one, anywhere in your Java code where you want to cause or invoke an exception, you use the key word throw.
+ * Number two, and this is much more subtle. Anytime our code throws an exception that isn't a descendant of the error or runtime Exception classes, we must explicitly declare in our method's signature that our method could throw such an exception.
+ * In Java programming speak, this is known as a checked exception and has the implication that any code that calls or uses our method must handle the exception i.e., call our method in a try block.
+ * This is enforced by the Java compiler, in other words whoever calls the completePurchase method has to have a backup plan if the InvalidPurchase Exception is thrown or occurs.
+ * It doesn't mean that you should throw exceptions every time something goes wrong. This is where developer discretion comes into play.
+ * Ideally, if we discover a problem or a unique situation, we should try and handle it gracefully in code. By just falling back to some reasonable default behavior for example, and continuing executing if possible. We call this failing silently.
+ * However, should we deem that it be more detrimental to keep going with an error state, then we may decide it's best to notify our calling code of the error by throwing exception.
+ * We've seen this in play already. In the case of our Soonami App, when we tried to request earthquake data from the internet, the Android framework code threw a SecurityException.
+ * This is a case when it's better to throw an exception and crash the app as opposed to continuing without the Internet permission.
+ * Now if the Android framework code had failed silently, then we as developers would probably be super confused as to why we did receive response from the server.
+ */
